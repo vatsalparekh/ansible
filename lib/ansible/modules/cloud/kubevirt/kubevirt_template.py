@@ -265,6 +265,7 @@ class KubeVirtVMTemplate(KubeVirtRawModule):
     @property
     def argspec(self):
         """ argspec property builder """
+        import import ipdb; ipdb.set_trace()
         argument_spec = copy.deepcopy(COMMON_ARG_SPEC)
         argument_spec.update(copy.deepcopy(AUTH_ARG_SPEC))
         argument_spec.update(TEMPLATE_ARG_SPEC)
