@@ -67,7 +67,7 @@ NIOS_PROVIDER_SPEC = {
     'host': dict(fallback=(env_fallback, ['INFOBLOX_HOST'])),
     'username': dict(fallback=(env_fallback, ['INFOBLOX_USERNAME'])),
     'password': dict(fallback=(env_fallback, ['INFOBLOX_PASSWORD']), no_log=True),
-    'ssl_verify': dict(type='bool', default=False, fallback=(env_fallback, ['INFOBLOX_SSL_VERIFY'])),
+    'validate_certs': dict(type='bool', default=False, fallback=(env_fallback, ['INFOBLOX_SSL_VERIFY']), aliases=['ssl_verify']),
     'silent_ssl_warnings': dict(type='bool', default=True),
     'http_request_timeout': dict(type='int', default=10, fallback=(env_fallback, ['INFOBLOX_HTTP_REQUEST_TIMEOUT'])),
     'http_pool_connections': dict(type='int', default=10),
@@ -89,7 +89,7 @@ def get_connector(*args, **kwargs):
                         'to be installed.  It can be installed using the '
                         'command `pip install infoblox-client`')
 
-    if not set(kwargs.keys()).issubset(NIOS_PROVIDER_SPEC.keys()):
+    if not set(kwargs.keys()).issubset(list(NIOS_PROVIDER_SPEC.keys()) + ['ssl_verify']):
         raise Exception('invalid or unsupported keyword argument for connector')
     for key, value in iteritems(NIOS_PROVIDER_SPEC):
         if key not in kwargs:
@@ -103,6 +103,10 @@ def get_connector(*args, **kwargs):
             env = ('INFOBLOX_%s' % key).upper()
             if env in os.environ:
                 kwargs[key] = os.environ.get(env)
+
+    if 'validate_certs' in kwargs.keys():
+        kwargs['ssl_verify'] = kwargs['validate_certs']
+        kwargs.pop('validate_certs', None)
 
     return Connector(kwargs)
 
@@ -147,8 +151,16 @@ def member_normalize(member_spec):
     It will remove any arguments that are set to None since WAPI will error on
     that condition.
     The remainder of the value validation is performed by WAPI
+    Some parameters in ib_spec are passed as a list in order to pass the validation for elements.
+    In this function, they are converted to dictionary.
     '''
+    member_elements = ['vip_setting', 'ipv6_setting', 'lan2_port_setting', 'mgmt_port_setting',
+                       'pre_provisioning', 'network_setting', 'v6_network_setting',
+                       'ha_port_setting', 'lan_port_setting', 'lan2_physical_setting',
+                       'lan_ha_port_setting', 'mgmt_network_setting', 'v6_mgmt_network_setting']
     for key in member_spec.keys():
+        if key in member_elements:
+            member_spec[key] = member_spec[key][0]
         if isinstance(member_spec[key], dict):
             member_spec[key] = member_normalize(member_spec[key])
         elif isinstance(member_spec[key], list):
